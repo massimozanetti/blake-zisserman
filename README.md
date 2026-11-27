@@ -98,7 +98,7 @@ $$
 \mathcal{AT}_\epsilon (v) = \int_\Omega \epsilon {|\nabla v|}^2 + \frac{1}{4 \epsilon} {(v-1)}^2 dx
 $$
 
-$\xi_\epsilon, \omicron_\epsilon$ are infinitesimals and $\Gamma$-convergence is intedend for $\epsilon \to 0$. Variables $s, z$ are indicators of discontinuity. Almost everywhere they are identically 1. For large $\nabla u$ values variable $s$ tends to bound the cost of its component by taking value 0, therefore indicating a discontinuity. In the same way, for large  $H u$ values variable $z$ tends to bound the cost of its component, therefore indicating a gradient discontinuity. The Ambrosio-Tortorelli component controls the decay of $s, z$ and approximates the measure of the set where $s, z$ is null.   
+$\xi_\epsilon, \omicron_\epsilon$ are infinitesimals and $\Gamma$-convergence is intedend for $\epsilon \to 0$. Variables $s, z$ are indicators of discontinuity. Almost everywhere they are identically 1. For large ${|\nabla u|}^2$ values variable $s$ tends to bound the cost of its component by taking value 0, therefore indicating a discontinuity. In the same way, for large  ${|H u|}^2$ values variable $z$ tends to bound the cost of its component, therefore indicating a gradient discontinuity. The Ambrosio-Tortorelli component controls the decay of $s, z$ and approximates the measure of the set where $s, z$ is null.   
 
 In this formulation the objective functional enjoys nice properties for numerical minimization. The `blakezisserman` package implements numerical minimization of functional $F_\epsilon$ for vector valued images and curves [3]. 
 
