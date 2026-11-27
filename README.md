@@ -133,7 +133,7 @@ The value of $\epsilon$-infinitesmials is hardcoded: $\xi_\epsilon = \epsilon^{1
 For a curve $g(t): \Omega \subset \mathbb{R} \to \mathbb{R}^N$ the `BlakeZisserman1D` class handles the minimization over $z, u$ of the functional 
 
 $$
-F(z, u) =\sum z^2\,|u''|^2 + \lambda\sum|u-g|^2
+F(z, u) =\sum z^2 |u''|^2 + \lambda\sum|u-g|^2
 +\eta \sum \Big(\epsilon |z'|^2 + \frac{(z-1)^2}{4\epsilon}\Big)
 $$
 
