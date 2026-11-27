@@ -1,5 +1,6 @@
 
 # blakezisserman
+[![tests](https://github.com/massimozanetti/blake-zisserman/actions/workflows/tests.yml/badge.svg)](https://github.com/massimozanetti/blake-zisserman/actions/workflows/tests.yml)
 
 Piecewise-smooth approximation of noisy signals, curves and images with the
 Blake–Zisserman variational model [1, 2, 3]. Along with the smoothed data, the model returns
