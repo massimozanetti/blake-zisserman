@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Blake-Zisserman variational approximation of signals, curves and images"
 readme = "README.md"
 requires-python = ">=3.10"
-authors = [{ name = "Your Name" }]
+authors = [{ name = "Massimo Zanetti" }]
 dependencies = [
     "numpy>=1.23",
     "scipy>=1.12",      # cg(..., rtol=...) keyword
