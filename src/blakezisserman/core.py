@@ -606,7 +606,7 @@ def solve2d(
     C_z = 2*epsilon*beta*Dfix_data
 
     # u system: A_u = 2delta (Dxx^T Z Dxx + Dyy^T Z Dyy + 2 Dxy^T Z Dxy) + 2xe (Dx^T S Dx + Dy^T S Dy) + 2mu Id
-    # with Z = diag(z^2), S = diag((s+eps^2)^2); its values are a linear map of (z^2, (s+eps^2)^2)
+    # with Z = diag(z^2), S = diag(s^2+eps^2); its values are a linear map of (z^2, s^2+eps^2)
     Mu = _DiaMatrix([(Dxx, 2*delta, 0), (Dyy, 2*delta, 0), (Dxy, 4*delta, 0), (Dx, 2*xe, 1), (Dy, 2*xe, 1)],
                     n, 2*mu)
 
@@ -636,7 +636,7 @@ def solve2d(
         res = u-g
         return (
             delta * np.dot(z**2, r) +
-            xe * np.dot((s+oe)**2, q) +
+            xe * np.dot(s**2+oe, q) +
             (alpha-beta) * (epsilon*(np.dot(dxs, dxs)+np.dot(dys, dys)) + np.dot(s-E, s-E)/(4*epsilon)) +
             beta *         (epsilon*(np.dot(dxz, dxz)+np.dot(dyz, dyz)) + np.dot(z-E, z-E)/(4*epsilon)) +
             mu*np.sum(res**2)
@@ -682,7 +682,7 @@ def solve2d(
         z, d_z = scalar_step(Mz, C_z, beta/(2*epsilon) + 2*delta*r, b_z, z, d_z, pcg_maxiter_z, 2*epsilon*beta*4, "z")
 
         # Solve for variable u (all channels in one block PCG)
-        diag_u, nrm_u = Mu.set_weights(z**2, (s+oe)**2)
+        diag_u, nrm_u = Mu.set_weights(z**2, s**2+oe)
         Minv_u = 1. / diag_u
         pcg_tol_u = sqrt(2*mu/nrm_u)
 
