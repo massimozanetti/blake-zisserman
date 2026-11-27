@@ -61,7 +61,7 @@ for i in range(n):
     pt1 = vertices[i]
     pt2 = vertices[i+1]
     # Linearly interpolate between the two structural vertices
-    points = np.linspace(pt1, pt2, num=int(np.linalg.norm(pt1-pt2))*unit_points, endpoint=False if i<n-1 else True)
+    points = np.linspace(pt1, pt2, num=int(np.linalg.norm(pt1-pt2))*unit_points, endpoint=False)
     xy.append(points)
 # Stack points into a 2d array
 xy = np.vstack(xy)
@@ -74,6 +74,9 @@ xy = ((xy-np.array([L, 0])) @ R) + np.array([L, 1])
 # Add gaussian white noise
 noise = rng.normal(0, noise_std, xy.shape)
 g = xy + noise
+# Close the curve: the last sample repeats the first one (convention for bound_cond='periodic')
+xy = np.vstack([xy, xy[:1]])
+g  = np.vstack([g, g[:1]])
 
 
 

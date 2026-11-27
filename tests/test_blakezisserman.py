@@ -23,13 +23,34 @@ def test_1d_signal_converges():
     assert F[-1] <= F[0]
 
 
-def test_1d_curve_with_breaks():
-    rng = np.random.default_rng(1)
-    t = np.cumsum(rng.uniform(0.5, 1.5, 80))
-    g = np.stack([np.cos(t / 10), np.sin(t / 10)], axis=1)
-    u, z, t_out, F, converged = BlakeZisserman1D(values=g, breaks=t).solve(1e-2, 1e-3)
-    assert u.shape == g.shape
-    assert np.all(np.isfinite(u))
+def test_1d_uneven_spacing_has_no_false_corners():
+    # a straight line has no corners, however unevenly it is sampled
+    t = np.concatenate([np.arange(0, 20, 0.5), 20 + np.arange(0, 40, 2.0)])   # spacing jumps from 0.5 to 2
+    u, z, t_out, F, converged = BlakeZisserman1D(values=0.5 * t, breaks=t).solve(1e-2, 1e-4)
+    assert converged
+    np.testing.assert_array_equal(t_out, t)
+    assert z[1:-1].min() > 0.99            # interior only: the end rows are one-sided
+
+
+def test_1d_closed_curve():
+    # unit circle sampled unevenly; the last sample closes the curve
+    t = np.sort(np.r_[0, np.random.default_rng(1).uniform(0, 2 * np.pi, 59), 2 * np.pi])
+    g = np.stack([np.cos(t), np.sin(t)], axis=1)
+    g[-1] = g[0]
+    u, z, t_out, F, converged = BlakeZisserman1D(values=g, breaks=t).solve(1e-1, 1e-1, bound_cond='periodic')
+    assert converged
+    assert u.shape == g.shape and z.shape == (g.shape[0],)
+    np.testing.assert_array_equal(u[-1], u[0])     # output is closed too
+    assert z.min() > 0.99                          # smooth circle: no corners
+
+
+def test_1d_input_checks():
+    with pytest.raises(ValueError, match="closed curve"):
+        BlakeZisserman1D(values=np.arange(10.)).solve(1e-2, 1e-4, bound_cond='periodic')
+    with pytest.raises(ValueError, match="strictly increasing"):
+        BlakeZisserman1D(values=np.arange(5.), breaks=np.array([0, 1, 1, 2, 4.]))
+    with pytest.raises(ValueError, match="Extra inputs"):
+        BlakeZisserman1D(values=np.arange(5.), brakes=np.arange(5.))
 
 
 @pytest.mark.parametrize("channels", [None, 3])

@@ -54,8 +54,8 @@ class SolveParameters1D(BaseModel):
 
 
 class BlakeZisserman1D(BaseModel):
-    # Enable Pydantic to accept non-standard Python types (numpy)
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    # Accept numpy arrays; reject unknown arguments (e.g. a misspelled option)
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
     # State attributes
     values: NumpyArray
@@ -79,10 +79,12 @@ class BlakeZisserman1D(BaseModel):
             return arr
         if not arr.ndim == 1:
             raise ValueError(f"Input array must be 1-dimensional, but got {arr.ndim} dimensions.")
+        if not np.all(np.isfinite(arr)) or np.any(np.diff(arr) <= 0):
+            raise ValueError("Input array breaks must be finite and strictly increasing.")
         return arr
 
     @model_validator(mode='after')
-    def check_dimensions_match(self) -> 'ArrayComparisonModel':
+    def check_dimensions_match(self) -> 'BlakeZisserman1D':
         breaks = self.breaks
         values = self.values
         if breaks is None:
@@ -149,8 +151,8 @@ class SolveParameters2D(BaseModel):
 
 
 class BlakeZisserman2D(BaseModel):
-    # Enable Pydantic to accept non-standard Python types (numpy)
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    # Accept numpy arrays; reject unknown arguments (e.g. a misspelled or removed option)
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
     # State attributes
     values: NumpyArray

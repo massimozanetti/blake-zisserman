@@ -3,7 +3,7 @@ from scipy.sparse import spdiags, eye, kron
 from scipy.sparse.linalg import norm, cg, LinearOperator
 
 import numpy as np
-from numpy import ones, zeros, sum, any, min, sqrt, inf, diff
+from numpy import ones, zeros, sum, any, min, sqrt, inf
 
 import logging
 # set logger
@@ -40,7 +40,7 @@ def solve1d(
       Output:
       - u           Numpy 2d-array of the input approximation
       - z           Numpy 1d-array of the gradient discontinuity of the approximation
-      - t           Numpy 1d-array of the break points of the curve parametrization
+      - t           Numpy 1d-array of the curve parametrization (breaks, or sample indices 0, ..., P-1)
       - F           Numpy 1d-array of functional evaluations during minimization iteration
       - converged   Boolean flag for convergence of the functional optimization
 
@@ -59,50 +59,65 @@ def solve1d(
     # N = dimension of the space the curve is embedded in
     P, N = g.shape
 
-    # Discretization of the curve domain (from break points of the curve parametrization)
-    if breaks is None:
-        t = np.arange(0, P)
-        h = ones(P)
-    else:
-        # Get intervals length by forward difference of the break points
-        t = breaks
-        h = diff(t, n=1, axis=0)
-        h = np.append(h, h[-1])    # P-th interval is a backward difference
+    # Curve parametrization: break points, or unit-spaced samples
+    t = np.arange(P, dtype=float) if breaks is None else np.asarray(breaks, dtype=float)
+    h = np.diff(t)                      # lengths of the P-1 intervals between samples
 
-    # Differential operators (1st-order forward, 2nd-order central)
-    Dt  = spdiags([-ones(P), ones(P)], [0,1], P, P).tolil()
-    Dtt = spdiags([ones(P), -2*ones(P), ones(P)], [-1,0,1], P, P).tolil()
-    # Boundary conditions entries editing, allowed by .tolil() 
+    # Closed curves: the last sample is the closing point, a copy of the first one.
+    # The solver works on the P-1 distinct points; the last interval links back to the first point.
+    closed = bound_cond == 'periodic'
+    if closed:
+        if P < 4:
+            raise ValueError("bound_cond='periodic' needs at least 4 samples (3 distinct points plus the closing point).")
+        if not np.allclose(g[-1], g[0]):
+            raise ValueError("bound_cond='periodic' expects a closed curve: the last sample must repeat the first one.")
+        g  = g[:-1]
+        m  = P - 1                      # number of distinct points
+        hr = h                          # interval after each point (the last one closes the curve)
+        hl = np.roll(h, 1)              # interval before each point
+    else:
+        m  = P
+        hr = np.r_[h, h[-1]]            # interval after each point (copied at the end)
+        hl = np.r_[h[0], h]             # interval before each point (copied at the start)
+    w = (hl + hr) / 2                   # length of curve represented by each point
+
+    # Differential operators
+    # 1st order: forward difference (u[i+1]-u[i]) / hr[i]
+    # 2nd order: three-point formula for uneven spacing (the usual [1, -2, 1] for unit spacing)
+    a = 2 / (hl * (hl + hr))            # weight of u[i-1]
+    c = 2 / (hr * (hl + hr))            # weight of u[i+1]
+    b = -(a + c)                        # weight of u[i]
+    Dt  = spdiags([-ones(m), ones(m)], [0,1], m, m).tolil()
+    Dtt = spdiags([np.r_[a[1:], 0], b, np.r_[0, c[:-1]]], [-1,0,1], m, m).tolil()
+    # Boundary conditions entries editing, allowed by .tolil()
     if bound_cond == 'none':
         pass
     elif bound_cond == 'periodic':
-        Dt[P-1, 0]  = 1
-        Dtt[P-1, 0] = 1
-        Dtt[0, P-1] = 1
+        Dt[m-1, 0]  = 1
+        Dtt[m-1, 0] = c[m-1]
+        Dtt[0, m-1] = a[0]
     elif bound_cond == 'null-neumann':
-        Dt[P-1, P-1]  = 0
-        Dtt[0, 0]     = -1
-        Dtt[P-1, P-1] = -1
-    # Apply discretization lengths
-    Dt  = spdiags(1/h, 0, P, P) @ Dt
-    Dtt = spdiags(1/(h**2), 0, P, P) @ Dtt
+        Dt[m-1, m-1]  = 0
+        Dtt[0, 0]     = -c[0]           # mirror point u[-1] = u[0]
+        Dtt[m-1, m-1] = -a[m-1]         # mirror point u[m] = u[m-1]
+    Dt = spdiags(1/hr, 0, m, m) @ Dt
     # Restore efficient sparse format
     Dt   = Dt.tocsr()
     Dtt  = Dtt.tocsr()
     DttT = Dtt.T.tocsr()
-    Dt2  = (Dt.T@Dt).tocsr()
+    Dt2  = (Dt.T @ spdiags(hr, 0, m, m) @ Dt).tocsr()
 
-    # Constant values
-    I    = eye(P)
-    E    = ones(P)
-    b_z  = eta/(2*epsilon)*E
-    b_u  = 2*llambda*g
+    # Constant values (each sum of the functional is weighted by the curve length of its point/interval)
+    W    = spdiags(w, 0, m, m)
+    E    = ones(m)
+    b_z  = eta/(2*epsilon)*w
+    b_u  = 2*llambda*w[:, None]*g
 
     # Initial values
     z = 1.*E
     u = 1.*g
-    d_z = zeros(P)
-    d_u = zeros((P, N))
+    d_z = zeros(m)
+    d_u = zeros((m, N))
 
     # Functional evaluation
     def Fe(z, u):
@@ -110,7 +125,8 @@ def solve1d(
         dz  = Dt@z
         res = u-g
         return (
-            np.sum(z[:, None]**2 * du**2) + llambda*np.sum(res**2) + eta*(epsilon*np.dot(dz, dz)+np.dot(z-E, z-E)/(4*epsilon))
+            np.sum(w[:, None] * z[:, None]**2 * du**2) + llambda*np.sum(w[:, None] * res**2)
+            + eta*(epsilon*np.dot(hr*dz, dz) + np.dot(w*(z-E), z-E)/(4*epsilon))
         )
 
     # Energy values
@@ -130,12 +146,15 @@ def solve1d(
 
         # Solve for variable z
 
-        A_z = 2*spdiags(sum((Dtt@u)**2, axis=1), 0, P, P) + 2*epsilon*eta*Dt2 + eta/(2*epsilon)*I
+        A_z = 2*spdiags(w*sum((Dtt@u)**2, axis=1), 0, m, m) + 2*epsilon*eta*Dt2 + eta/(2*epsilon)*W
         
         # Preconditioning and tolerance for PCG
         Ai_z = 1. / A_z.diagonal()
         M_z  = LinearOperator(A_z.shape, matvec=lambda x: Ai_z*x, dtype=A_z.dtype)
-        pcg_tol_z = sqrt(min(A_z.diagonal()-2*epsilon*eta*4)/norm(A_z, inf))
+        tol_base = min(A_z.diagonal() - 2*epsilon*eta*4/hr.min())     # = original formula for unit spacing
+        if tol_base <= 0:   # very fine spacing: use the diagonal without the z' term, which is always > 0
+            tol_base = min(A_z.diagonal() - 2*epsilon*eta*Dt2.diagonal())
+        pcg_tol_z = sqrt(tol_base/norm(A_z, inf))
 
         # Gradient
         grad_z = A_z@z - b_z
@@ -154,13 +173,13 @@ def solve1d(
         
         # Solve for variable u
 
-        z2Dtt = Dtt.multiply((z**2)[:, None]).tocsr()
-        A_u = 2 * (DttT @ z2Dtt) + 2*llambda*I
+        z2Dtt = Dtt.multiply((w*z**2)[:, None]).tocsr()
+        A_u = 2 * (DttT @ z2Dtt) + 2*llambda*W
 
         # Preconditioning and tolerance for PCG
         Ai_u = 1. / A_u.diagonal()
         M_u  = LinearOperator(A_u.shape, matvec=lambda x: Ai_u*x, dtype=A_u.dtype)
-        pcg_tol_u = sqrt(2*llambda/norm(A_u, inf))
+        pcg_tol_u = sqrt(2*llambda*w.min()/norm(A_u, inf))
         
         for n in range(0, N):
 
@@ -191,12 +210,13 @@ def solve1d(
 
     if converged:
         log.info(f'Successfully converged at iter={k} within functional tolerance fun_rtol={fun_rtol}')
-        # Close the loop for closed curves
-        if bound_cond=='periodic' and N>1:
-            u[-1] = u[0]
-            z[-1] = z[0]
     else:
         log.warning(f'Failed to converge at maxiter={maxiter} within functional tolerance fun_rtol={fun_rtol}')
+
+    # Closed curves: append the closing point, so outputs have the same length P as the input
+    if closed:
+        u = np.vstack([u, u[:1]])
+        z = np.r_[z, z[0]]
 
     return u, z, t, F, converged
 

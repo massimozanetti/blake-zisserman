@@ -94,7 +94,7 @@ z = np.empty(shape_)
 for (i, llambda), (j, eta) in product(enumerate(LAMBDA), enumerate(ETA)):
   
     # Minimize BZ functional (omit breaks, convergence flag and functional output)
-    u_, z_, _, _, _ = bz1d.solve(llambda, eta, bound_cond='periodic', log_level='INFO')
+    u_, z_, _, _, _ = bz1d.solve(llambda, eta, bound_cond='null-neumann', log_level='INFO')
 
     u[i, j, :] = u_.squeeze()
     z[i, j, :] = z_.squeeze()
