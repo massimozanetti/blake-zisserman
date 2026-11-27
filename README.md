@@ -79,19 +79,25 @@ Run from the repository root; figures are written to `./examples/results/`.
 ## The model
 
 The Blake-Zisserman model is a free discontinuity minimization problem for the approximation of an input function $g: \Omega \subset \mathbb{R}^2 \to \mathbb{R}$ by a piecewise smooth function $u$ whose discontiunity set $K_0$ and gradient discontinuity set $K_1$ are theirselves unknown variables of the problem. The objective requires to minimize [1]:
+
 $$
 \mathcal{BZ}(K_0, K_1, u) = \int_{\Omega \setminus (K_0 \cup K_1)} {|Hu|}^2 + \mu {|u-g|}^2 dx + \alpha \mathcal{H}^1(K_0) + \beta \mathcal{H}^1(K_1)
 $$
+
 where $H$ is the Hessian operator, $\mathcal{H}^1$ is the 1-dimensional Hausdorff measure (which measures the length in any n-dimensional space) and $\mu, \alpha, \beta$ are positive parameters penalizing their respective terms.
 
 Numerical minimization is not tractable in this form. Ambrosio, Faina and March [2] proposed a $\Gamma$-convergence approximation of the orginal functional by the family of elliptic funcionals
+
 $$
 F_\epsilon(s, z, u) = \delta \int_\Omega z^2 {|Hu|}^2 dx + \xi_\epsilon \int_\Omega (s^2+\omicron_\epsilon) {|\nabla u|}^2 dx + (\alpha - \beta) \mathcal{AT}_\epsilon(s) + \beta \mathcal{AT}_\epsilon(z) + \mu \int_\Omega {|u-g|}^2 dx
 $$
+
 where $s, z, u$ are Sobolev functions, $\mathcal{AT}_\epsilon$ is the Ambrosio-Tortorelli component
+
 $$
 \mathcal{AT}_\epsilon (v) = \int_\Omega \epsilon {|\nabla v|}^2 + \frac{1}{4 \epsilon} {(v-1)}^2 dx
 $$
+
 $\xi_\epsilon, \omicron_\epsilon$ are infinitesimals and $\Gamma$-convergence is intedend for $\epsilon \to 0$. Variables $s, z$ are indicators of discontinuity. Almost everywhere they are identically 1. For large $\nabla u$ values variable $s$ tends to bound the cost of its component by taking value 0, therefore indicating a discontinuity. In the same way, for large  $H u$ values variable $z$ tends to bound the cost of its component, therefore indicating a gradient discontinuity. The Ambrosio-Tortorelli component controls the decay of $s, z$ and approximates the measure of the set where $s, z$ is null.   
 
 In this formulation the objective functional enjoys nice properties for numerical minimization. The `blakezisserman` package implements numerical minimization of functional $F_\epsilon$ for vector valued images and curves [3]. 
@@ -99,6 +105,7 @@ In this formulation the objective functional enjoys nice properties for numerica
 ### Vector valued images
 
 For an image $g(x,y): \Omega \subset \mathbb{R}^2 \to \mathbb{R}^N$ the `BlakeZisserman2D` class handles the minimization over $s, z, u$ of the functional
+
 $$
 \begin{aligned}
 F_\epsilon(s, z, u) = {} & \mu\sum|u-g|^2 + \delta\sum z^2 {|H u|}^2 + \xi_\epsilon \sum (s^2+\omicron_\epsilon) {|\nabla u|}^2 \\
@@ -106,6 +113,7 @@ F_\epsilon(s, z, u) = {} & \mu\sum|u-g|^2 + \delta\sum z^2 {|H u|}^2 + \xi_\epsi
 +\beta\sum\Big(\epsilon|\nabla z|^2+\frac{(z-1)^2}{4\epsilon}\Big)
 \end{aligned}
 $$
+
 with differential operators:
 - ${|\nabla v|}^2 = \sum_{n=1}^N {(\partial_x v_n)}^2 + {(\partial_y v_n)}^2$
 - ${|H u|}^2 = \sum_{n=1}^N {(\partial_{xx} u_n)}^2 + {(\partial_{yy} u_n)}^2 + 2 {(\partial_{xy} u_n)}^2$
@@ -123,10 +131,12 @@ The value of $\epsilon$-infinitesmials is hardcoded: $\xi_\epsilon = \epsilon^{1
 ### Vector valued curves
 
 For a curve $g(t): \Omega \subset \mathbb{R} \to \mathbb{R}^N$ the `BlakeZisserman1D` class handles the minimization over $z, u$ of the functional 
+
 $$
 F(z, u) =\sum z^2\,|u''|^2 + \lambda\sum|u-g|^2
 +\eta \sum \Big(\epsilon |z'|^2 + \frac{(z-1)^2}{4\epsilon}\Big)
 $$
+
 with differential operators:
 - ${|z'|}^2 = {(\partial_t z)}^2 $
 - ${|z''|}^2 = {(\partial_{tt} z)}^2 $
